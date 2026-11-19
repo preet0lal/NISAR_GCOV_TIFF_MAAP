@@ -26,7 +26,7 @@ DEFAULTS=(
 )
 if [[ "$#" -eq 5 && "$1" != --* ]]; then
   # Legacy positional MAAP job registration.
-  exec python -u "${BASEDIR}/nisar_dps_wrapper.py" "${DEFAULTS[@]}"
+  exec python -u "${BASEDIR}/nisar_dps_wrapper.py" "${DEFAULTS[@]}" \
     --s3_url "$1" --bbox "$2" "$3" "$4" "$5"
 else
   # Modern named-input invocation; explicit flags override environment defaults.
