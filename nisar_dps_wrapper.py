@@ -170,7 +170,11 @@ def assert_outputs(folder: Path, terms: tuple[str, str], args):
     if args.grid_mode == "EASE2":
         suffixes.append("_EASE2_grid.mat")
     for suffix in suffixes:
-        matches = list(folder.glob(f"*{suffix}"))
+        # "*_incidence_angle_deg.tif" also matches "*_local_incidence_angle_deg.tif";
+        # exclude it so each product is counted exactly once.
+        matches = [p for p in folder.glob(f"*{suffix}")
+                   if not (suffix == "_incidence_angle_deg.tif"
+                           and p.name.endswith("_local_incidence_angle_deg.tif"))]
         if len(matches) != 1 or matches[0].stat().st_size == 0:
             raise RuntimeError(f"Missing/incomplete {suffix} output in {folder}")
 
