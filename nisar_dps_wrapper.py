@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """MAAP DPS adapter for the 2026-11-18 NISAR_GCOV_TO_TIFF.py processor.
 
-One NISAR GCOV granule per DPS job. The input AOI is used only to decide whether
-this granule intersects the requested area; it NEVER clips the original frame.
+One NISAR GCOV granule per DPS job. The input AOI always decides whether this
+granule intersects the requested area. With --clip_to_aoi no (default) the full
+frame is kept; with --clip_to_aoi yes the AOI is passed to the processor as
+--bbox and outputs are cropped to the AOI on the global EASE2 lattice.
 Invoke the scientific processor directly and synchronously (not the nohup shell
 launcher) so DPS sees real success/failure and collects finished output files.
 """
@@ -37,7 +39,9 @@ def get_args(argv=None):
     source.add_argument("--local_h5", help="Local GCOV granule, for offline testing")
     parser.add_argument("--bbox", type=float, nargs=4, required=True,
                         metavar=("WEST", "SOUTH", "EAST", "NORTH"),
-                        help="AOI intersection test only; never clips full-frame output")
+                        help="AOI: intersection test; also the output crop when --clip_to_aoi yes")
+    parser.add_argument("--clip_to_aoi", choices=("yes", "no"), default="no",
+                        help="yes: crop outputs to --bbox; no: keep the full frame")
     parser.add_argument("--grid_mode", choices=("EASE2", "UTM"), default="EASE2")
     parser.add_argument("--target_epsg", default="auto")
     parser.add_argument("--frequency", choices=("all", "frequencyA", "frequencyB"),
@@ -214,7 +218,10 @@ def run(args):
             raise RuntimeError("Unrecognized NISAR GCOV filename")
         print(f"CRID {metadata['crid']} -> {product_maturity(metadata['crid'])}; exception mask={args.use_exception_mask}", flush=True)
         tasks = inspect_tasks(h5_path, args)
-        print(f"AOI {args.bbox}: intersection ONLY. No --bbox is passed to processor; FULL frame retained.", flush=True)
+        if args.clip_to_aoi == "yes":
+            print(f"AOI {args.bbox}: outputs CLIPPED to AOI (--bbox passed to processor).", flush=True)
+        else:
+            print(f"AOI {args.bbox}: intersection ONLY. No --bbox is passed to processor; FULL frame retained.", flush=True)
 
         for frequency, pair, terms in tasks:
             destination = output_dir / frequency / pair
@@ -237,6 +244,8 @@ def run(args):
                 "--native_block_px", str(args.native_block_px),
                 "--keep_intermediate", args.keep_intermediate,
             ]
+            if args.clip_to_aoi == "yes":
+                command += ["--bbox", *(repr(float(v)) for v in args.bbox)]
             if args.dem_dir:
                 command += ["--dem_dir", str(Path(args.dem_dir).resolve())]
             elif args.lia == "yes":
@@ -252,7 +261,8 @@ def run(args):
         "crid": metadata["crid"],
         "product_maturity": product_maturity(metadata["crid"]),
         "aoi_selection_bbox": args.bbox,
-        "aoi_does_not_clip_full_frame": True,
+        "aoi_does_not_clip_full_frame": args.clip_to_aoi == "no",
+        "clip_to_aoi": args.clip_to_aoi,
         "grid_mode": args.grid_mode,
         "filter": args.filter,
         "exception_mask_applied": args.use_exception_mask,

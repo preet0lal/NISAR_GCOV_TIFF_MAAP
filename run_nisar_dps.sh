@@ -23,6 +23,8 @@ DEFAULTS=(
   --min_coverage "${NISAR_MIN_COVERAGE:-0.90}"
   --use_exception_mask "${NISAR_USE_EXCEPTION_MASK:-yes}"
   --tile_workers "${NISAR_TILE_WORKERS:-4}"
+  # aoi-clip branch: crop outputs to the submitted bbox (main keeps full frames).
+  --clip_to_aoi "${NISAR_CLIP_TO_AOI:-yes}"
 )
 if [[ "$#" -eq 5 && "$1" != --* ]]; then
   # Legacy positional MAAP job registration.
